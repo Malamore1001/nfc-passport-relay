@@ -1,0 +1,26 @@
+# Android build files
+android-reader/app/build/
+android-reader/build/
+android-reader/.gradle/
+android-emulator/app/build/
+android-emulator/build/
+android-emulator/.gradle/
+*.iml
+.idea/
+local.properties
+
+# iOS build files
+ios-reader/build/
+ios-reader/DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Node modules
+server/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# APK output - keep these!
+# apk-output/

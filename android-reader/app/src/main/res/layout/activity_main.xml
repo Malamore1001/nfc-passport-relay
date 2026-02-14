@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0a0a0f"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📖 NFC READER"
+            android:textSize="24sp"
+            android:textColor="#00ff88"
+            android:textStyle="bold"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- STEP 1: MRZ Scanning - STOR OCH TYDLIG -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1a1a24"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="① SKANNA MRZ FRÅN PASSET"
+                android:textSize="14sp"
+                android:textColor="#00ff88"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Camera Preview - STOR -->
+            <FrameLayout
+                android:id="@+id/cameraContainer"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:visibility="visible"
+                android:layout_marginBottom="8dp">
+
+                <androidx.camera.view.PreviewView
+                    android:id="@+id/cameraPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#000000"/>
+
+                <!-- Guide overlay -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    
+                    <View
+                        android:layout_width="280dp"
+                        android:layout_height="60dp"
+                        android:background="@android:color/transparent"
+                        android:layout_marginTop="60dp"/>
+                    
+                    <!-- MRZ target box -->
+                    <View
+                        android:layout_width="280dp"
+                        android:layout_height="50dp"
+                        android:background="#3000ff88"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📷 Rikta mot MRZ-texten\n(de 2 raderna längst ner på passet)"
+                    android:textColor="#ffffff"
+                    android:textSize="12sp"
+                    android:background="#cc000000"
+                    android:padding="8dp"
+                    android:gravity="center"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="8dp"/>
+            </FrameLayout>
+
+            <Button
+                android:id="@+id/scanMrzButton"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="📷 Starta/Stoppa kamera"
+                android:textColor="#ffffff"
+                android:backgroundTint="#2a2a3a"
+                android:textSize="12sp"/>
+
+            <!-- MRZ Status -->
+            <TextView
+                android:id="@+id/mrzStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⏳ Väntar på MRZ-skanning..."
+                android:textColor="#ffaa00"
+                android:textSize="13sp"
+                android:padding="8dp"
+                android:background="#12121a"
+                android:layout_marginTop="8dp"/>
+
+            <!-- Manual MRZ Input (collapsed by default) -->
+            <LinearLayout
+                android:id="@+id/mrzManualInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Eller skriv in manuellt:"
+                    android:textColor="#666677"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <EditText
+                    android:id="@+id/mrzLine1Input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="P&lt;UTOERIKSSON&lt;&lt;ANNA..."
+                    android:textColor="#00ff88"
+                    android:textColorHint="#333344"
+                    android:background="#0a0a0f"
+                    android:padding="8dp"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace"
+                    android:inputType="textCapCharacters"
+                    android:maxLines="1"
+                    android:layout_marginBottom="4dp"/>
+
+                <EditText
+                    android:id="@+id/mrzLine2Input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="L898902C&lt;3UTO690806..."
+                    android:textColor="#00ff88"
+                    android:textColorHint="#333344"
+                    android:background="#0a0a0f"
+                    android:padding="8dp"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace"
+                    android:inputType="textCapCharacters"
+                    android:maxLines="1"
+                    android:layout_marginBottom="4dp"/>
+
+                <Button
+                    android:id="@+id/saveMrzButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:text="💾 Spara MRZ"
+                    android:textColor="#0a0a0f"
+                    android:backgroundTint="#00ccff"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- STEP 2: Connect to Server -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1a1a24"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="② ANSLUT TILL SERVER"
+                android:textSize="14sp"
+                android:textColor="#00ccff"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <EditText
+                android:id="@+id/serverUrlInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="ws://51.21.134.222:3000"
+                android:text="ws://51.21.134.222:3000"
+                android:textColor="#ffffff"
+                android:textColorHint="#444455"
+                android:background="#12121a"
+                android:padding="10dp"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="8dp"
+                android:inputType="textUri"/>
+
+            <Button
+                android:id="@+id/connectButton"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="🔗 ANSLUT"
+                android:textColor="#0a0a0f"
+                android:backgroundTint="#00ff88"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
+            <!-- Status -->
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⚪ Ej ansluten"
+                android:textColor="#888899"
+                android:textSize="12sp"
+                android:padding="8dp"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <!-- STEP 3: Create Session -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1a1a24"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="③ SKAPA SESSION"
+                android:textSize="14sp"
+                android:textColor="#ff6688"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <Button
+                android:id="@+id/createSessionButton"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="➕ SKAPA SESSION"
+                android:textColor="#ffffff"
+                android:backgroundTint="#2a2a3a"
+                android:textSize="14sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dela denna kod med emulator-telefonen:"
+                android:textColor="#666677"
+                android:textSize="11sp"
+                android:layout_marginTop="8dp"/>
+
+            <TextView
+                android:id="@+id/sessionCodeText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="------"
+                android:textSize="40sp"
+                android:textColor="#00ff88"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.4"
+                android:gravity="center"
+                android:background="#12121a"
+                android:padding="16dp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <!-- STEP 4: Place Passport -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1a1a24"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="④ LÄGG PASSET PÅ TELEFONEN"
+                android:textSize="14sp"
+                android:textColor="#ffaa00"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/passportStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📱 Väntar på pass..."
+                android:textColor="#888899"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:padding="20dp"
+                android:background="#12121a"/>
+        </LinearLayout>
+
+        <!-- Log -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LOGG (scrollbar)"
+            android:textColor="#444455"
+            android:textSize="10sp"
+            android:layout_marginBottom="4dp"/>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="#12121a"
+            android:fillViewport="true">
+            
+            <ScrollView
+                android:id="@+id/logScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:isScrollContainer="true">
+
+                <TextView
+                    android:id="@+id/logText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#00ff88"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:lineSpacingMultiplier="1.4"
+                    android:textIsSelectable="true"/>
+            </ScrollView>
+        </HorizontalScrollView>
+
+    </LinearLayout>
+</ScrollView>

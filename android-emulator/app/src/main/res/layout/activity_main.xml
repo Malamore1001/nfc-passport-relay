@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#0a0a0f">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📡 NFC EMULATOR"
+        android:textSize="28sp"
+        android:textColor="#00ccff"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="10dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Passport NFC Relay - Emulator Mode (HCE)"
+        android:textSize="14sp"
+        android:textColor="#888899"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="30dp"/>
+
+    <!-- Status -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#1a1a24"
+        android:padding="15dp"
+        android:layout_marginBottom="10dp">
+
+        <View
+            android:id="@+id/statusDot"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="#ff4466"
+            android:layout_marginEnd="12dp"
+            android:layout_gravity="center_vertical"/>
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ej ansluten"
+            android:textColor="#ffffff"
+            android:textSize="16sp"/>
+    </LinearLayout>
+
+    <!-- HCE Status -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#1a1a24"
+        android:padding="15dp"
+        android:layout_marginBottom="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HCE: "
+            android:textColor="#888899"
+            android:textSize="14sp"/>
+
+        <TextView
+            android:id="@+id/hceStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kontrollerar..."
+            android:textColor="#ffffff"
+            android:textSize="14sp"/>
+    </LinearLayout>
+
+    <!-- Server connection -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Server URL"
+        android:textColor="#888899"
+        android:textSize="12sp"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/serverUrlInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="ws://192.168.1.100:3000"
+        android:text="ws://192.168.1.100:3000"
+        android:textColor="#ffffff"
+        android:textColorHint="#555566"
+        android:background="#12121a"
+        android:padding="15dp"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:layout_marginBottom="10dp"/>
+
+    <Button
+        android:id="@+id/connectButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🔗 Anslut till server"
+        android:textColor="#0a0a0f"
+        android:backgroundTint="#00ccff"
+        android:textSize="16sp"
+        android:layout_marginBottom="20dp"/>
+
+    <!-- Join Session -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Session-kod (från Reader)"
+        android:textColor="#888899"
+        android:textSize="12sp"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/sessionCodeInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="T.ex. ABC123"
+        android:textColor="#ffffff"
+        android:textColorHint="#555566"
+        android:background="#12121a"
+        android:padding="15dp"
+        android:textSize="20sp"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:letterSpacing="0.3"
+        android:inputType="textCapCharacters"
+        android:maxLength="6"
+        android:layout_marginBottom="10dp"/>
+
+    <Button
+        android:id="@+id/joinSessionButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🔗 Gå med i session"
+        android:textColor="#ffffff"
+        android:backgroundTint="#2a2a3a"
+        android:textSize="16sp"
+        android:layout_marginBottom="20dp"/>
+
+    <!-- Log -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📋 Logg"
+        android:textColor="#888899"
+        android:textSize="12sp"
+        android:layout_marginBottom="8dp"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#12121a"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/logText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#888899"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:lineSpacingMultiplier="1.3"/>
+    </ScrollView>
+
+</LinearLayout>

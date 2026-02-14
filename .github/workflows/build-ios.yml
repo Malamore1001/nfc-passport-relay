@@ -1,0 +1,54 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'ios-reader/**'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+    
+    - name: Show Xcode version
+      run: xcodebuild -version
+    
+    - name: Build iOS App
+      working-directory: ios-reader
+      run: |
+        xcodebuild -project NFCPassportReader.xcodeproj \
+          -scheme NFCPassportReader \
+          -sdk iphoneos \
+          -configuration Release \
+          -archivePath build/NFCPassportReader.xcarchive \
+          archive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          DEVELOPMENT_TEAM=""
+    
+    - name: Create IPA
+      working-directory: ios-reader
+      run: |
+        mkdir -p build/Payload
+        cp -r build/NFCPassportReader.xcarchive/Products/Applications/NFCPassportReader.app build/Payload/
+        cd build
+        zip -r NFCPassportReader.ipa Payload
+        mv NFCPassportReader.ipa ../
+    
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: NFCPassportReader-iOS
+        path: ios-reader/NFCPassportReader.ipa
+        retention-days: 30

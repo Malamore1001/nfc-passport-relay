@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NFC Emulator</string>
+    <string name="service_desc">Passport NFC Relay Service</string>
+    <string name="aid_desc">E-Passport relay</string>
+</resources>

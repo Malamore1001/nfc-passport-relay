@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NFC Passport Relay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --accent: #00ff88;
+            --accent-dim: #00ff8833;
+            --accent-secondary: #00ccff;
+            --text-primary: #ffffff;
+            --text-secondary: #888899;
+            --danger: #ff4466;
+            --warning: #ffaa00;
+            --border: #2a2a3a;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, var(--accent-dim) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 204, 255, 0.1) 0%, transparent 50%),
+                linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            z-index: -1;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 15px;
+            min-height: 100vh;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+        
+        h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 3px;
+        }
+        
+        /* Status indicator */
+        .status-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: blink 1s ease-in-out infinite;
+        }
+        
+        .status-dot.connected {
+            background: var(--accent);
+            animation: none;
+            box-shadow: 0 0 10px var(--accent);
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .status-text {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+        
+        /* Steps */
+        .step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+        
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        
+        .step-number.blue { background: var(--accent-secondary); }
+        .step-number.orange { background: var(--warning); }
+        .step-number.pink { background: var(--danger); }
+        
+        .step-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        
+        /* Camera */
+        .camera-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .camera-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        .mrz-guide {
+            width: 90%;
+            height: 50px;
+            border: 2px dashed var(--accent);
+            border-radius: 5px;
+            margin-top: 40px;
+        }
+        
+        .camera-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+        
+        .ocr-status {
+            text-align: center;
+            padding: 8px;
+            font-size: 0.8rem;
+            color: var(--warning);
+        }
+        
+        .ocr-status.success {
+            color: var(--accent);
+        }
+        
+        /* MRZ Display */
+        .mrz-display {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent);
+            word-break: break-all;
+            margin-bottom: 10px;
+        }
+        
+        /* Role selection */
+        .role-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .role-btn {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .role-btn:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        
+        .role-btn.active {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        
+        .role-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        
+        .role-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .role-desc {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 3px;
+        }
+        
+        /* Session code */
+        .session-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.2rem;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 6px;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            color: var(--accent);
+            text-shadow: 0 0 20px var(--accent-dim);
+        }
+        
+        /* Input styles */
+        .input-group {
+            margin-bottom: 10px;
+        }
+        
+        .input-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #00cc6a 100%);
+            color: var(--bg-primary);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--accent-dim);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+        
+        .btn-blue {
+            background: linear-gradient(135deg, var(--accent-secondary) 0%, #0099cc 100%);
+            color: var(--bg-primary);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .btn-small {
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+        
+        /* NFC animation */
+        .nfc-status {
+            text-align: center;
+            padding: 25px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+        
+        .nfc-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .nfc-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .nfc-text.active {
+            color: var(--accent);
+        }
+        
+        /* Log */
+        .log-container {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+        }
+        
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-time {
+            color: var(--text-secondary);
+        }
+        
+        .log-msg.success { color: var(--accent); }
+        .log-msg.error { color: var(--danger); }
+        .log-msg.warning { color: var(--warning); }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .mt-10 { margin-top: 10px; }
+        .mb-10 { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">🛂</div>
+            <h1>NFC Passport Relay</h1>
+            <p class="subtitle">Secure real-time NFC bridge</p>
+        </header>
+        
+        <div class="status-bar">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-text" id="statusText">Ansluter till server...</span>
+        </div>
+        
+        <!-- Step 0: Role Selection -->
+        <div class="step" id="roleSelection">
+            <div class="step-header">
+                <div class="step-number">0</div>
+                <span class="step-title">Välj din roll</span>
+            </div>
+            <div class="role-buttons">
+                <div class="role-btn" onclick="selectRole('reader')">
+                    <div class="role-icon">📖</div>
+                    <div class="role-name">READER</div>
+                    <div class="role-desc">Har passet fysiskt</div>
+                </div>
+                <div class="role-btn" onclick="selectRole('emulator')">
+                    <div class="role-icon">📡</div>
+                    <div class="role-name">EMULATOR</div>
+                    <div class="role-desc">Behöver passet</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- READER FLOW -->
+        <div id="readerFlow" class="hidden">
+            
+            <!-- Step 1: Scan MRZ -->
+            <div class="step" id="mrzStep">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <span class="step-title">Skanna MRZ från passet</span>
+                </div>
+                
+                <div class="camera-container" id="cameraContainer">
+                    <video id="cameraVideo" autoplay playsinline></video>
+                    <div class="camera-overlay">
+                        <div class="mrz-guide"></div>
+                    </div>
+                    <div class="camera-hint">📷 Rikta mot MRZ-texten (2 rader längst ner)</div>
+                </div>
+                
+                <div class="ocr-status" id="ocrStatus">Väntar på kamera...</div>
+                
+                <button class="btn btn-secondary btn-small mb-10" onclick="toggleCamera()" id="cameraToggle">
+                    📷 Starta kamera
+                </button>
+                
+                <button class="btn btn-secondary btn-small mb-10" onclick="captureAndScan()" id="captureBtn" disabled>
+                    🔍 Skanna MRZ nu
+                </button>
+                
+                <div class="mrz-display hidden" id="mrzDisplay">
+                    <div id="mrzLine1">-</div>
+                    <div id="mrzLine2">-</div>
+                </div>
+                
+                <div id="manualMrzToggle">
+                    <button class="btn btn-secondary btn-small" onclick="toggleManualMrz()">
+                        ✏️ Skriv in MRZ manuellt
+                    </button>
+                </div>
+                
+                <div id="manualMrz" class="hidden mt-10">
+                    <div class="input-group">
+                        <label>MRZ Rad 1 (44 tecken)</label>
+                        <input type="text" id="mrzLine1Input" placeholder="P<UTOERIKSSON<<ANNA..." maxlength="44">
+                    </div>
+                    <div class="input-group">
+                        <label>MRZ Rad 2 (44 tecken)</label>
+                        <input type="text" id="mrzLine2Input" placeholder="L898902C<3UTO690806..." maxlength="44">
+                    </div>
+                    <button class="btn btn-blue btn-small" onclick="saveMrzManual()">
+                        💾 Spara MRZ
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Create Session -->
+            <div class="step" id="sessionStep">
+                <div class="step-header">
+                    <div class="step-number blue">2</div>
+                    <span class="step-title">Skapa session</span>
+                </div>
+                
+                <button class="btn btn-primary mb-10" onclick="createSession()" id="createSessionBtn">
+                    ➕ Skapa ny session
+                </button>
+                
+                <div id="sessionCreated" class="hidden">
+                    <p style="color: var(--text-secondary); margin-bottom: 10px; text-align: center; font-size: 0.85rem;">
+                        Dela denna kod med emulator-telefonen:
+                    </p>
+                    <div class="session-code" id="sessionCodeDisplay">------</div>
+                </div>
+            </div>
+            
+            <!-- Step 3: NFC -->
+            <div class="step" id="nfcStep">
+                <div class="step-header">
+                    <div class="step-number orange">3</div>
+                    <span class="step-title">Lägg passet på telefonen</span>
+                </div>
+                
+                <div class="nfc-status">
+                    <div class="nfc-icon" id="nfcIcon">📱</div>
+                    <div class="nfc-text" id="nfcText">Klicka nedan för att aktivera NFC</div>
+                </div>
+                
+                <button class="btn btn-primary mt-10" onclick="startNfc()" id="nfcBtn">
+                    📡 Aktivera NFC-läsning
+                </button>
+            </div>
+        </div>
+        
+        <!-- EMULATOR FLOW -->
+        <div id="emulatorFlow" class="hidden">
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number blue">1</div>
+                    <span class="step-title">Gå med i session</span>
+                </div>
+                
+                <div class="input-group">
+                    <label>Session-kod (från Reader)</label>
+                    <input type="text" id="sessionCodeInput" placeholder="ABC123" maxlength="6" 
+                           style="text-transform: uppercase; text-align: center; letter-spacing: 5px; font-size: 1.3rem;">
+                </div>
+                <button class="btn btn-primary" onclick="joinSession()">
+                    🔗 Anslut till session
+                </button>
+            </div>
+            
+            <div class="step hidden" id="emulatorActive">
+                <div class="step-header">
+                    <div class="step-number orange">2</div>
+                    <span class="step-title">Redo för relay</span>
+                </div>
+                
+                <div class="nfc-status">
+                    <div class="nfc-icon">📡</div>
+                    <div class="nfc-text active">Session aktiv - lägg telefonen på NFC-läsaren</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Log -->
+        <div class="step">
+            <div class="step-header">
+                <span class="step-title" style="font-size: 0.8rem; color: var(--text-secondary);">📋 Logg</span>
+            </div>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">
+                    <span class="log-time">--:--:--</span>
+                    <span class="log-msg">Väntar på aktivitet...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let ws = null;
+        let selectedRole = null;
+        let currentSessionId = null;
+        let mrzData = { line1: '', line2: '' };
+        let cameraStream = null;
+        let isScanning = false;
+        
+        // Initialize
+        connect();
+        
+        // WebSocket
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                updateStatus(true, 'Ansluten till server');
+                log('Ansluten till relay-server', 'success');
+            };
+            
+            ws.onclose = () => {
+                updateStatus(false, 'Frånkopplad - återansluter...');
+                log('Frånkopplad från server', 'error');
+                setTimeout(connect, 3000);
+            };
+            
+            ws.onerror = (err) => {
+                log('WebSocket-fel', 'error');
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleMessage(message);
+            };
+        }
+        
+        function handleMessage(msg) {
+            console.log('Received:', msg);
+            
+            switch (msg.type) {
+                case 'welcome':
+                    log(`Klient-ID: ${msg.clientId}`);
+                    break;
+                    
+                case 'session_created':
+                    currentSessionId = msg.sessionId;
+                    document.getElementById('sessionCodeDisplay').textContent = msg.sessionId;
+                    document.getElementById('sessionCreated').classList.remove('hidden');
+                    document.getElementById('createSessionBtn').disabled = true;
+                    log(`Session skapad: ${msg.sessionId}`, 'success');
+                    break;
+                    
+                case 'session_joined':
+                    currentSessionId = msg.sessionId;
+                    log(`Gick med i session: ${msg.sessionId}`, 'success');
+                    break;
+                    
+                case 'session_ready':
+                    log('Session redo - båda enheter anslutna!', 'success');
+                    if (selectedRole === 'emulator') {
+                        document.getElementById('emulatorActive').classList.remove('hidden');
+                    }
+                    break;
+                    
+                case 'apdu_command':
+                    log(`← APDU: ${msg.apdu?.substring(0, 30)}...`, 'warning');
+                    break;
+                    
+                case 'apdu_response':
+                    log(`→ Svar: ${msg.apdu?.substring(0, 30)}... (${msg.latency}ms)`);
+                    break;
+                    
+                case 'peer_disconnected':
+                    log(`${msg.role} frånkopplad`, 'error');
+                    break;
+                    
+                case 'error':
+                    log(`Fel: ${msg.message}`, 'error');
+                    break;
+            }
+        }
+        
+        function updateStatus(connected, text) {
+            const dot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (connected) {
+                dot.classList.add('connected');
+            } else {
+                dot.classList.remove('connected');
+            }
+            statusText.textContent = text;
+        }
+        
+        function selectRole(role) {
+            selectedRole = role;
+            
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            document.getElementById('roleSelection').classList.add('hidden');
+            
+            if (role === 'reader') {
+                document.getElementById('readerFlow').classList.remove('hidden');
+                // Auto-start camera
+                setTimeout(() => toggleCamera(), 500);
+            } else {
+                document.getElementById('emulatorFlow').classList.remove('hidden');
+            }
+            
+            log(`Roll vald: ${role}`);
+        }
+        
+        // Camera & OCR
+        async function toggleCamera() {
+            const video = document.getElementById('cameraVideo');
+            const container = document.getElementById('cameraContainer');
+            const toggleBtn = document.getElementById('cameraToggle');
+            const captureBtn = document.getElementById('captureBtn');
+            
+            if (cameraStream) {
+                // Stop camera
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                video.srcObject = null;
+                toggleBtn.textContent = '📷 Starta kamera';
+                captureBtn.disabled = true;
+                document.getElementById('ocrStatus').textContent = 'Kamera avstängd';
+                return;
+            }
+            
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                video.srcObject = cameraStream;
+                toggleBtn.textContent = '⏹️ Stoppa kamera';
+                captureBtn.disabled = false;
+                document.getElementById('ocrStatus').textContent = 'Kamera aktiv - rikta mot MRZ';
+                log('Kamera startad', 'success');
+                
+                // Start continuous scanning
+                startContinuousScan();
+                
+            } catch (err) {
+                log(`Kamerafel: ${err.message}`, 'error');
+                document.getElementById('ocrStatus').textContent = 'Kunde inte starta kamera';
+            }
+        }
+        
+        function startContinuousScan() {
+            if (!cameraStream || isScanning) return;
+            
+            // Scan every 2 seconds
+            setInterval(() => {
+                if (cameraStream && !mrzData.line1) {
+                    captureAndScan();
+                }
+            }, 2000);
+        }
+        
+        async function captureAndScan() {
+            if (!cameraStream) return;
+            
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Focus on bottom part where MRZ is
+            const mrzCanvas = document.createElement('canvas');
+            const mrzHeight = Math.floor(canvas.height * 0.3);
+            mrzCanvas.width = canvas.width;
+            mrzCanvas.height = mrzHeight;
+            const mrzCtx = mrzCanvas.getContext('2d');
+            mrzCtx.drawImage(canvas, 0, canvas.height - mrzHeight, canvas.width, mrzHeight, 0, 0, canvas.width, mrzHeight);
+            
+            document.getElementById('ocrStatus').textContent = '🔍 Analyserar bild...';
+            isScanning = true;
+            
+            try {
+                const result = await Tesseract.recognize(mrzCanvas, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            document.getElementById('ocrStatus').textContent = `🔍 OCR: ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                });
+                
+                const text = result.data.text.toUpperCase();
+                const extracted = extractMrz(text);
+                
+                if (extracted) {
+                    mrzData = extracted;
+                    displayMrz(extracted);
+                    document.getElementById('ocrStatus').textContent = '✅ MRZ hittad!';
+                    document.getElementById('ocrStatus').classList.add('success');
+                    log('MRZ skannad automatiskt!', 'success');
+                    
+                    // Stop camera after success
+                    toggleCamera();
+                    
+                    // Send MRZ to server
+                    sendMrzToServer();
+                } else {
+                    document.getElementById('ocrStatus').textContent = '❌ Ingen MRZ hittad - försök igen';
+                }
+            } catch (err) {
+                document.getElementById('ocrStatus').textContent = '❌ OCR-fel';
+                log(`OCR-fel: ${err.message}`, 'error');
+            }
+            
+            isScanning = false;
+        }
+        
+        function extractMrz(text) {
+            // Clean up text
+            const lines = text.split('\n')
+                .map(l => l.replace(/[^A-Z0-9<]/g, ''))
+                .filter(l => l.length >= 40);
+            
+            // Look for MRZ pattern
+            for (let i = 0; i < lines.length - 1; i++) {
+                const line1 = lines[i];
+                const line2 = lines[i + 1];
+                
+                // TD3 passport: starts with P and has <
+                if (line1.startsWith('P') && line1.includes('<') && line2.includes('<')) {
+                    // Pad or trim to 44 chars
+                    const mrz1 = (line1 + '<'.repeat(44)).substring(0, 44);
+                    const mrz2 = (line2 + '<'.repeat(44)).substring(0, 44);
+                    
+                    return { line1: mrz1, line2: mrz2 };
+                }
+            }
+            
+            return null;
+        }
+        
+        function displayMrz(mrz) {
+            document.getElementById('mrzLine1').textContent = mrz.line1;
+            document.getElementById('mrzLine2').textContent = mrz.line2;
+            document.getElementById('mrzDisplay').classList.remove('hidden');
+        }
+        
+        function toggleManualMrz() {
+            const manual = document.getElementById('manualMrz');
+            manual.classList.toggle('hidden');
+        }
+        
+        function saveMrzManual() {
+            const line1 = document.getElementById('mrzLine1Input').value.toUpperCase().trim();
+            const line2 = document.getElementById('mrzLine2Input').value.toUpperCase().trim();
+            
+            if (line1.length < 44 || line2.length < 44) {
+                log('MRZ måste vara 44 tecken per rad', 'error');
+                return;
+            }
+            
+            mrzData = { line1, line2 };
+            displayMrz(mrzData);
+            document.getElementById('ocrStatus').textContent = '✅ MRZ sparad manuellt';
+            document.getElementById('ocrStatus').classList.add('success');
+            document.getElementById('manualMrz').classList.add('hidden');
+            log('MRZ sparad', 'success');
+            
+            sendMrzToServer();
+        }
+        
+        function sendMrzToServer() {
+            if (!mrzData.line1) return;
+            
+            ws.send(JSON.stringify({
+                type: 'mrz_data',
+                data: mrzData
+            }));
+            log('MRZ skickad till server', 'success');
+        }
+        
+        // Session
+        function createSession() {
+            ws.send(JSON.stringify({
+                type: 'create_session',
+                role: 'reader'
+            }));
+        }
+        
+        function joinSession() {
+            const code = document.getElementById('sessionCodeInput').value.toUpperCase();
+            if (code.length !== 6) {
+                log('Session-kod måste vara 6 tecken', 'error');
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: 'join_session',
+                sessionId: code,
+                role: 'emulator'
+            }));
+        }
+        
+        // NFC (Web NFC API - Chrome Android only)
+        async function startNfc() {
+            if (!('NDEFReader' in window)) {
+                log('Web NFC stöds inte i denna webbläsare', 'error');
+                document.getElementById('nfcText').textContent = '❌ Web NFC stöds inte - använd Android-appen';
+                return;
+            }
+            
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                
+                document.getElementById('nfcIcon').textContent = '📡';
+                document.getElementById('nfcText').textContent = '🟢 NFC aktiv - lägg passet på telefonen';
+                document.getElementById('nfcText').classList.add('active');
+                document.getElementById('nfcBtn').disabled = true;
+                log('NFC-läsning aktiverad', 'success');
+                
+                ndef.addEventListener('reading', ({ message, serialNumber }) => {
+                    log(`NFC: ${serialNumber}`, 'success');
+                    // Note: Web NFC can't read passport APDU directly
+                    // This is for basic NFC detection only
+                });
+                
+                ndef.addEventListener('readingerror', () => {
+                    log('NFC-läsfel', 'error');
+                });
+                
+            } catch (err) {
+                log(`NFC-fel: ${err.message}`, 'error');
+                document.getElementById('nfcText').textContent = `❌ ${err.message}`;
+            }
+        }
+        
+        // Logging
+        function log(message, type = '') {
+            const container = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString('sv-SE');
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-msg ${type}">${message}</span>
+            `;
+            
+            container.insertBefore(entry, container.firstChild);
+            
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+    </script>
+</body>
+</html>
