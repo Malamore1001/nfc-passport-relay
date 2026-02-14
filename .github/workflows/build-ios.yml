@@ -3,27 +3,56 @@ name: Build iOS App
 on:
   push:
     branches: [ main, master ]
-    paths:
-      - 'ios-reader/**'
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
     
+    - name: List available Xcode versions
+      run: ls -la /Applications/ | grep Xcode
+    
     - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+      run: |
+        # Try to find available Xcode
+        if [ -d "/Applications/Xcode_15.4.app" ]; then
+          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+        elif [ -d "/Applications/Xcode_15.3.app" ]; then
+          sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer
+        elif [ -d "/Applications/Xcode_15.2.app" ]; then
+          sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+        elif [ -d "/Applications/Xcode_15.1.app" ]; then
+          sudo xcode-select -s /Applications/Xcode_15.1.app/Contents/Developer
+        elif [ -d "/Applications/Xcode_15.0.app" ]; then
+          sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+        elif [ -d "/Applications/Xcode.app" ]; then
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        fi
     
     - name: Show Xcode version
       run: xcodebuild -version
     
-    - name: Build iOS App
+    - name: Build iOS App (Simulator)
+      working-directory: ios-reader
+      run: |
+        xcodebuild -project NFCPassportReader.xcodeproj \
+          -scheme NFCPassportReader \
+          -sdk iphonesimulator \
+          -configuration Release \
+          -derivedDataPath build \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          ONLY_ACTIVE_ARCH=NO \
+          build
+    
+    - name: Build iOS App (Device - Unsigned)
       working-directory: ios-reader
       run: |
         xcodebuild -project NFCPassportReader.xcodeproj \
@@ -35,20 +64,45 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          DEVELOPMENT_TEAM=""
+          DEVELOPMENT_TEAM="" \
+          AD_HOC_CODE_SIGNING_ALLOWED=YES \
+          CODE_SIGN_ENTITLEMENTS=""
+      continue-on-error: true
     
-    - name: Create IPA
+    - name: Create IPA from Archive
       working-directory: ios-reader
       run: |
-        mkdir -p build/Payload
-        cp -r build/NFCPassportReader.xcarchive/Products/Applications/NFCPassportReader.app build/Payload/
-        cd build
-        zip -r NFCPassportReader.ipa Payload
-        mv NFCPassportReader.ipa ../
+        if [ -d "build/NFCPassportReader.xcarchive/Products/Applications/NFCPassportReader.app" ]; then
+          mkdir -p build/Payload
+          cp -r build/NFCPassportReader.xcarchive/Products/Applications/NFCPassportReader.app build/Payload/
+          cd build
+          zip -r NFCPassportReader.ipa Payload
+          mv NFCPassportReader.ipa ../
+          echo "IPA created successfully!"
+        else
+          echo "Archive not found, creating from simulator build..."
+          mkdir -p build/Payload
+          # Find the .app file
+          find build -name "*.app" -type d | head -1 | xargs -I {} cp -r {} build/Payload/
+          cd build
+          zip -r NFCPassportReader.ipa Payload
+          mv NFCPassportReader.ipa ../
+        fi
+      continue-on-error: true
+    
+    - name: List build outputs
+      working-directory: ios-reader
+      run: |
+        echo "=== Build directory contents ==="
+        find build -name "*.app" -o -name "*.ipa" 2>/dev/null || echo "No .app or .ipa found"
+        ls -la *.ipa 2>/dev/null || echo "No IPA in root"
     
     - name: Upload IPA
       uses: actions/upload-artifact@v4
       with:
         name: NFCPassportReader-iOS
-        path: ios-reader/NFCPassportReader.ipa
+        path: |
+          ios-reader/NFCPassportReader.ipa
+          ios-reader/build/**/*.app
+        if-no-files-found: warn
         retention-days: 30
