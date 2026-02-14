@@ -18,35 +18,24 @@ jobs:
       with:
         xcode-version: '15.4'
     
-    - name: Show Xcode version
-      run: xcodebuild -version
-    
-    - name: Build with verbose output
+    - name: List project info
       working-directory: ios-reader
       run: |
-        set -o pipefail
+        echo "=== Project schemes ==="
+        xcodebuild -project NFCPassportReader.xcodeproj -list
+        echo ""
+        echo "=== Project settings ==="
+        xcodebuild -project NFCPassportReader.xcodeproj -scheme NFCPassportReader -showBuildSettings | head -100
+    
+    - name: Try simple build
+      working-directory: ios-reader
+      run: |
+        echo "=== Starting build ==="
         xcodebuild \
           -project NFCPassportReader.xcodeproj \
-          -scheme NFCPassportReader \
+          -target NFCPassportReader \
           -sdk iphonesimulator \
           -configuration Debug \
-          -derivedDataPath ./build \
           CODE_SIGNING_ALLOWED=NO \
-          ONLY_ACTIVE_ARCH=YES \
-          VALID_ARCHS="x86_64 arm64" \
-          2>&1 | tee build.log || true
-        
-        echo ""
-        echo "=== BUILD ERRORS ==="
-        grep -i "error:" build.log || echo "No errors found in grep"
-        
-        echo ""
-        echo "=== LAST 50 LINES ==="
-        tail -50 build.log
-    
-    - name: Upload build log
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-log
-        path: ios-reader/build.log
+          ARCHS="x86_64" \
+          build 2>&1 || echo "Build failed with exit code $?"
