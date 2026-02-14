@@ -18,24 +18,59 @@ jobs:
       with:
         xcode-version: '15.4'
     
-    - name: List project info
+    - name: Build for iOS Device
       working-directory: ios-reader
       run: |
-        echo "=== Project schemes ==="
-        xcodebuild -project NFCPassportReader.xcodeproj -list
-        echo ""
-        echo "=== Project settings ==="
-        xcodebuild -project NFCPassportReader.xcodeproj -scheme NFCPassportReader -showBuildSettings | head -100
-    
-    - name: Try simple build
-      working-directory: ios-reader
-      run: |
-        echo "=== Starting build ==="
+        echo "=== Building for iOS Device ==="
         xcodebuild \
           -project NFCPassportReader.xcodeproj \
           -target NFCPassportReader \
-          -sdk iphonesimulator \
-          -configuration Debug \
+          -sdk iphoneos \
+          -configuration Release \
           CODE_SIGNING_ALLOWED=NO \
-          ARCHS="x86_64" \
-          build 2>&1 || echo "Build failed with exit code $?"
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          ARCHS="arm64" \
+          build
+        
+        echo ""
+        echo "=== Build completed ==="
+    
+    - name: Create IPA
+      working-directory: ios-reader
+      run: |
+        echo "=== Creating IPA file ==="
+        
+        # Find the .app file
+        APP_PATH="build/Release-iphoneos/NFCPassportReader.app"
+        
+        if [ -d "$APP_PATH" ]; then
+          echo "Found app at: $APP_PATH"
+          
+          # Create Payload directory structure for IPA
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          
+          # Create IPA (which is just a zip with .ipa extension)
+          zip -r NFCPassportReader.ipa Payload
+          
+          echo "IPA created successfully!"
+          ls -la NFCPassportReader.ipa
+        else
+          echo "App not found at expected path, searching..."
+          find build -name "*.app" -type d
+        fi
+    
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: NFCPassportReader-iOS
+        path: ios-reader/NFCPassportReader.ipa
+        if-no-files-found: warn
+    
+    - name: Upload App Bundle (backup)
+      uses: actions/upload-artifact@v4
+      with:
+        name: NFCPassportReader-App
+        path: ios-reader/build/Release-iphoneos/NFCPassportReader.app
+        if-no-files-found: warn
