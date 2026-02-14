@@ -21,48 +21,32 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
     
-    - name: List schemes
-      working-directory: ios-reader
-      run: xcodebuild -project NFCPassportReader.xcodeproj -list
-    
-    - name: Build for Simulator
+    - name: Build with verbose output
       working-directory: ios-reader
       run: |
+        set -o pipefail
         xcodebuild \
           -project NFCPassportReader.xcodeproj \
           -scheme NFCPassportReader \
           -sdk iphonesimulator \
-          -arch x86_64 \
-          -configuration Release \
+          -configuration Debug \
           -derivedDataPath ./build \
           CODE_SIGNING_ALLOWED=NO \
-          ONLY_ACTIVE_ARCH=NO \
-          build
-    
-    - name: Create App Package
-      working-directory: ios-reader
-      run: |
-        echo "=== Looking for built app ==="
-        find ./build -name "*.app" -type d 2>/dev/null
+          ONLY_ACTIVE_ARCH=YES \
+          VALID_ARCHS="x86_64 arm64" \
+          2>&1 | tee build.log || true
         
-        APP_PATH=$(find ./build -name "NFCPassportReader.app" -type d 2>/dev/null | head -1)
+        echo ""
+        echo "=== BUILD ERRORS ==="
+        grep -i "error:" build.log || echo "No errors found in grep"
         
-        if [ -n "$APP_PATH" ]; then
-          echo "Found app: $APP_PATH"
-          mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -r NFCPassportReader-Simulator.zip Payload
-          echo "Package created!"
-          ls -la *.zip
-        else
-          echo "App not found"
-        fi
+        echo ""
+        echo "=== LAST 50 LINES ==="
+        tail -50 build.log
     
-    - name: Upload Build
+    - name: Upload build log
       uses: actions/upload-artifact@v4
+      if: always()
       with:
-        name: NFCPassportReader-iOS
-        path: |
-          ios-reader/*.zip
-          ios-reader/build/Build/Products/**/*
-        if-no-files-found: warn
+        name: build-log
+        path: ios-reader/build.log
